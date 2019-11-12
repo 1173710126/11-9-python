@@ -48,7 +48,6 @@ class HMM(object):
             = alpha(t,i) * belta(t,i)
         3.  P(o1,...,oT) 
             = sum_i alpha(t,i) * belta(t,i)
-        
         epsilon, gamma可用alpha, belta表示
         epsilon[k,t,i,j] = P(zt = i, zt+1 = j | Qk) = P(zt = i, zt+1 = j, Qk) / P(Qk) 
                          = alpha(t,i) * a(i,j) * b(t+1,j) * belta(t+1,j) / P(Qk)
