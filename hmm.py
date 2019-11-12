@@ -35,6 +35,7 @@ class HMM(object):
         return 
 
     '''
+    2
     E部:计算似然函数Q的系数: 根据旧参数计算后验概率
         epsilon[k,t,i,j] = P(zt = i, zt+1 = j | Qk), 第k组观测值的条件下, t时刻 zt = i, zt+1 = j (状态对i,j)出现的概率
         gamma[k,t,i] = P(zt = i| Qk), 第k组观测值的条件下, t时刻 zt = i (状态i)出现的概率 
@@ -48,7 +49,6 @@ class HMM(object):
             = alpha(t,i) * belta(t,i)
         3.  P(o1,...,oT) 
             = sum_i alpha(t,i) * belta(t,i)
-        
         epsilon, gamma可用alpha, belta表示
         epsilon[k,t,i,j] = P(zt = i, zt+1 = j | Qk) = P(zt = i, zt+1 = j, Qk) / P(Qk) 
                          = alpha(t,i) * a(i,j) * b(t+1,j) * belta(t+1,j) / P(Qk)
