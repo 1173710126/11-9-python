@@ -35,7 +35,6 @@ class HMM(object):
         return 
 
     '''
-    2
     E部:计算似然函数Q的系数: 根据旧参数计算后验概率
         epsilon[k,t,i,j] = P(zt = i, zt+1 = j | Qk), 第k组观测值的条件下, t时刻 zt = i, zt+1 = j (状态对i,j)出现的概率
         gamma[k,t,i] = P(zt = i| Qk), 第k组观测值的条件下, t时刻 zt = i (状态i)出现的概率 
