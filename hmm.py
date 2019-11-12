@@ -11,7 +11,7 @@ class HMM(object):
     # 似然和M部都与发射概率B有关, 而B可以连续可以离散, 故这里暂不定义
     def likelihood(self, Q):
         raise NotImplementedError
-    
+
     def maximize(self, Qs, epsilon, gamma):
         raise NotImplementedError
 
@@ -86,7 +86,6 @@ class HMM(object):
         return epsilons, gammas
 
     """
-    已通过测试
     前向算法
     input : Qs 同一HMM模型的多个观测序列
     output: alpha[k, t, i] 第k个序列alpha(t,i)的值
@@ -133,7 +132,6 @@ class HMM(object):
         return alphas
 
     '''
-    已通过测试
     后向算法
     input : Qs 同一HMM模型的多个观测序列
     output: belta[k, t, i] belta(t,i)的值, t时刻状态i生成该时刻观测值的概率
