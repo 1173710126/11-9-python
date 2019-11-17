@@ -84,3 +84,51 @@ class GaussianHMM(HMM):
         
         return
 
+
+    def supervision_train(self, Q, states):
+        #states = self.viterbi(Q)
+        cnt = np.zeros(self.n_hidden)
+
+        # 初始化 means
+        means = np.zeros((self.n_hidden, self.n_dim))
+        for t, state in enumerate(states):
+            cnt[state] += 1
+            means[state] += Q[t]
+        for state in states:
+            means[state] /= cnt[state]
+        self.means = means
+
+        # 初始化 covs
+        covs = np.zeros((self.n_hidden, self.n_dim, self.n_dim))
+        for i in range(self.n_hidden):
+            covs[i] = np.eye(self.n_dim, self.n_dim)
+        for t, state in enumerate(states):
+            diff = Q[t] - means[state]
+            diff.shape = (1, self.n_dim)
+            covs[state] += np.matmul(diff.T, diff)
+        for state in states:
+            covs[state] /= cnt[state]
+        self.covs = covs
+
+        # 初始化 transition_prob
+        trans_cnt = np.zeros((self.n_hidden, self.n_hidden))
+        for t, state in enumerate(states[:-1]):
+            trans_cnt[state][states[t+1]] += 1
+        for i in range(self.n_hidden):
+            for j in range(self.n_hidden):
+                if np.abs(trans_cnt[i].sum()) > 1e-5:
+                    self.transition_prob[i][j] = trans_cnt[i][j] / trans_cnt[i].sum()
+        # 初始化 initial_prob
+        self.initial_prob = np.zeros(self.n_hidden)
+        self.initial_prob[states[0]] = 1
+    def viterbi_init(self, Q, iter_max = 5):
+        params = np.hstack((self.initial_prob.ravel(), self.transition_prob.ravel(), self.means.ravel(), self.covs.ravel()))
+        for _ in range(iter_max):   
+            states = self.viterbi(Q)
+            self.supervision_train(Q, states)  # 给定观测值序列Q 和 状态序列states, 利用监督学习/频率=概率 估计hmm参数
+            params_new = np.hstack((self.initial_prob.ravel(), self.transition_prob.ravel(), self.means.ravel(), self.covs.ravel()))
+            if np.allclose(params, params_new): # 逐元素 判断参数是否收敛, array中所有参数值收敛时返回True
+                break
+            else:
+                params = params_new
+        return

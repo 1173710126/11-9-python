@@ -6,6 +6,7 @@ class MultivariateGaussian(object):
         self.n_dim = mean.shape[0]
         self.mean = mean
         self.cov = cov
+        #print(cov)
         self.precision = np.linalg.inv(self.cov)
     
     # 计算x在该多维高斯分下出现的概率, 注意：概率密度可以大于1，是分布函数一定<=1
