@@ -72,31 +72,43 @@ class GaussianHMM(HMM):
                     transition_prob[i][j] += epsilon[:,i,j].sum()
         transition_prob = np.nan_to_num(transition_prob)
         transition_prob += 1e-300
-        transition_prob /= np.nan_to_num(transition_prob.sum(axis = 0))
+        transition_prob /= np.nan_to_num(transition_prob.sum(axis = 0)) # 联合概率除以先验概率 = 条件概率
         self.transition_prob = transition_prob
 
         for i in range(self.n_hidden):
-            ui = sum([np.matmul(gamma[:,i], Q) for Q, gamma in zip(Qs, gammas)]) / num
+            ui = sum([np.matmul(gamma[:,i], Q) for Q, gamma in zip(Qs, gammas)]) / num # 均值 = 所有时刻 生成状态i的概率*该时刻观测值 的平均值
             self.means[i] = ui
             #print(gammas[0][:,i].shape) (100,) 每个时刻出现状态i的概率 T维数组
             #print((Qs[0] - ui).shape)   (100,2) 每时刻与状态i方差的差值向量， T*n_dim维
-            covs = np.zeros((self.n_hidden, self.n_dim, self.n_dim), dtype = 'float64')
-            for k in range(num):
-                Q = Qs[k]
-                T = Q.shape[0]
-                gamma = gammas[k]
-                for t in range(T):
-                    for i in range(self.n_hidden):
-                        diff = Q[t] - self.means[i]
-                        diff.shape = (1, diff.shape[0])
-                        covs[i] += gamma[t][i] * np.matmul(diff.T, diff)
-            #print(sum([gamma.sum(axis = 0) for gamma in gammas]).shape): (3,) 没问题
-            #print(covs.shape): (3,2,2) 没问题
-            sum_gamma = sum([gamma.sum(axis = 0) for gamma in gammas])
-            for i in range(self.n_hidden):
-                covs[i] /= (sum_gamma[i] + 1e-2/self.n_hidden)
-            # covi = sum([np.matmul(gamma[:,i], np.matmul((Q - ui).T, Q - ui)) for Q, gamma in zip(Qs, gammas)]) / num
-            self.covs = covs
+
+        covs = np.zeros((self.n_hidden, self.n_dim, self.n_dim), dtype = 'float64')
+        for k in range(num):
+            Q = Qs[k]
+            T = Q.shape[0]
+            gamma = gammas[k]
+            for t in range(T):
+                for i in range(self.n_hidden):
+                    diff = Q[t] - self.means[i]
+                    diff.shape = (1, diff.shape[0])
+                    covs[i] += gamma[t][i] * np.matmul(diff.T, diff)
+        
+        
+        #print(sum([gamma.sum(axis = 0) for gamma in gammas]).shape): (3,) 没问题
+        #print(covs.shape): (3,2,2) 没问题
+        sum_gamma = sum([gamma.sum(axis = 0) for gamma in gammas])
+        for i in range(self.n_hidden):
+            covs[i] /= (sum_gamma[i] + 1e-2/self.n_hidden)
+        # covi = sum([np.matmul(gamma[:,i], np.matmul((Q - ui).T, Q - ui)) for Q, gamma in zip(Qs, gammas)]) / num
+
+        # 将协方差矩阵转成对角阵
+        for k in range(self.n_hidden):
+            for i in range(self.n_dim):
+                for j in range(self.n_dim):
+                    if i == j and abs(covs[k][i][j]) < 1e-5:
+                        covs[k][i][j] = np.sign(covs[k][i][j]) * 1e-5
+                    else:
+                        covs[k][i][j] = 0     
+        self.covs = covs
         
         return
 

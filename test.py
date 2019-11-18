@@ -1,121 +1,87 @@
-from GaussianHMM import GaussianHMM
 import numpy as np
+from get_mfc_data import get_mfc_data
+from GaussianHMM import GaussianHMM
 
 if __name__ == "__main__":
-    gaussian_hmm = GaussianHMM(
-    initial_prob=np.ones(3) / 3,
-    transition_prob=np.array([[0.9, 0.05, 0.05], [0.05, 0.9, 0.05], [0.05, 0.05, 0.9]]),
-    means=np.array([[0, 0], [2, 10], [10, 5]]),
-    covs=np.asarray([np.eye(2) for _ in range(3)]))
-    Q = np.array([[-1.03363130e+00,  2.02683258e+00],
-       [-7.20588733e-01,  8.87162940e-01],
-       [-3.30606820e-01,  8.74127912e-01],
-       [ 1.15003572e+00,  9.91946022e-01],
-       [ 1.45809100e-01,  2.89409095e+00],
-       [ 4.05453412e-01,  2.89091941e-01],
-       [-6.89926669e-01,  1.87497371e-01],
-       [ 1.93421376e-01,  5.53438911e-01],
-       [-6.60441412e-01,  1.04108597e+00],
-       [-1.83108540e-01,  1.05896919e+00],
-       [ 4.41438245e-01, -7.69872713e-01],
-       [ 8.63717292e-01, -1.22091575e-01],
-       [ 9.13951642e-01,  1.68912124e+00],
-       [ 7.61995878e-02, -5.66445930e-01],
-       [-1.00655134e+00,  7.69447596e-03],
-       [-1.36794833e-01,  1.82891913e-02],
-       [-6.72193899e-01,  9.13887719e-01],
-       [-1.40197328e+00, -1.00918200e-01],
-       [-7.08752242e-02, -6.53945433e-01],
-       [ 1.05657383e+01,  6.54565880e+00],
-       [ 9.75452162e+00,  4.64383868e+00],
-       [ 1.10338007e+01,  2.59954637e+00],
-       [-5.63550866e-01, -1.78029134e+00],
-       [ 2.11883387e-01,  7.04720624e-01],
-       [ 4.53501968e-01, -6.45366572e-01],
-       [-9.26254314e-01,  2.00784295e+00],
-       [ 1.05432679e+00,  2.55546274e+00],
-       [ 1.04643923e+01,  1.43648334e+00],
-       [ 1.11428329e+01,  5.72485469e+00],
-       [ 1.02708358e+01,  6.39198619e+00],
-       [ 9.06763612e+00,  5.22683369e+00],
-       [ 8.97214944e+00,  4.41528179e+00],
-       [ 9.22812176e+00,  3.74367394e+00],
-       [ 1.02912054e+01,  5.56653370e+00],
-       [ 1.01794620e+01,  5.25719867e+00],
-       [ 9.21889472e+00,  4.53198233e+00],
-       [ 9.42260489e+00,  5.21321466e+00],
-       [ 2.87547550e+00,  8.28928468e+00],
-       [ 1.16534869e+00,  9.45637562e+00],
-       [ 2.68065600e+00,  8.18150101e+00],
-       [-8.32423090e-01,  1.14059396e-01],
-       [-6.82883996e-01,  4.36257604e-01],
-       [-1.19218500e+00,  8.18644255e-01],
-       [ 6.94103288e-01,  6.78629674e-01],
-       [ 2.47055051e-01,  6.45433027e-01],
-       [ 6.39632763e-01, -9.62028832e-01],
-       [ 1.01860624e+01,  6.31418215e+00],
-       [ 8.26465113e+00,  6.21038370e+00],
-       [ 9.68621917e+00,  5.40984339e+00],
-       [ 1.11768125e+01,  4.47566390e+00],
-       [ 1.09025997e+01,  6.48027664e+00],
-       [ 1.04961429e+01,  5.79659487e+00],
-       [ 9.91458726e+00,  4.70711081e+00],
-       [ 7.87637975e+00,  4.66649756e+00],
-       [ 9.90941459e+00,  4.89693527e+00],
-       [ 9.67979612e+00,  4.08380114e+00],
-       [ 1.00554350e+01,  4.92723615e+00],
-       [ 1.06287758e+01,  5.18649435e+00],
-       [ 8.28361362e+00,  4.52336735e+00],
-       [ 1.01396833e+01,  4.77698102e+00],
-       [ 1.11808933e+01,  6.45939176e+00],
-       [ 7.85214496e+00,  3.65246749e+00],
-       [ 9.98608593e+00,  5.05313000e+00],
-       [ 1.27239508e+00, -1.44956661e+00],
-       [-6.59969574e-01, -6.85013630e-01],
-       [ 2.09394788e-01, -5.92886004e-01],
-       [-1.79600245e-01,  6.27897232e-01],
-       [ 1.10435157e+00, -4.31549516e-01],
-       [ 1.11246103e+00,  1.02215517e+01],
-       [ 2.15699838e+00,  9.42854465e+00],
-       [-4.41071354e-01,  8.08644992e-01],
-       [-5.24627346e-01,  7.18780394e-02],
-       [-1.04902828e+00,  5.26192220e-01],
-       [ 1.04394466e+00,  2.10778515e+00],
-       [-1.08775671e+00,  7.80065504e-01],
-       [ 4.40266392e-01,  6.88971856e-01],
-       [ 1.15280824e+00, -8.93148837e-02],
-       [ 2.26363227e-01, -2.07861789e+00],
-       [ 7.29358873e-02, -4.45124720e-01],
-       [ 1.21171805e-01,  2.98983936e-01],
-       [-5.14097041e-01, -1.00914221e-01],
-       [-1.24765292e+00,  2.49455215e-01],
-       [ 1.10091692e+00,  4.17965190e-02],
-       [-2.75773729e-01,  5.00482900e-01],
-       [ 5.90502152e-01,  2.93661206e-01],
-       [ 8.60794592e+00,  6.15392224e+00],
-       [ 1.04468506e+01,  6.12497331e+00],
-       [ 1.18638011e+01,  3.28772608e+00],
-       [ 9.52228627e+00,  4.56793619e+00],
-       [ 9.16115708e+00,  5.55392125e+00],
-       [ 1.72639107e+00,  9.72320993e+00],
-       [ 3.52940067e+00,  1.02054549e+01],
-       [ 2.98360620e+00,  1.03832621e+01],
-       [ 2.36317735e+00,  1.18936798e+01],
-       [-5.30920155e-01,  1.04258727e+01],
-       [ 9.68131507e+00,  4.27733781e+00],
-       [ 1.09357725e+01,  4.75860735e+00],
-       [ 1.00235046e+01,  5.55377698e+00],
-       [ 9.68368798e+00,  5.43011992e+00],
-       [ 7.60249602e+00,  6.54102998e+00]])
-    
-    
-    Qs = list()
-    Qs.append(Q)
-    gaussian_hmm.fit(Qs)
-    
-    #forw = gaussian_hmm.forward([np.asarray(Q) for Q in Qs])[0]
-    #bacw = gaussian_hmm.backward([np.asarray(Q) for Q in Qs])
-    #epsilons, gammas = gaussian_hmm.expect([np.asarray(Q) for Q in Qs])
-    #print(gammas[0])
-    #print(bacw[0])
-    #print(epsilons)
+    datas = get_mfc_data('C:/Users/18341/Desktop/book/听觉/实验3-语音识别/语料/features/')
+    '''
+    for key in datas:
+        print(len(datas[key]))
+        print(len(datas[key][0]))
+    '''
+    hmms = dict()
+        
+    '''
+    原始版本的训练和测试, 训练过程中只能看到最后的测试结果
+    下面未注释版本每训练一次就测试一次, 可以看到多次测试结果
+    for category in datas:
+        Qs = datas[category]
+        n_hidden = 6
+        #initial_prob = np.random.randn(n_hidden)
+        #transition_prob = np.random.randn(n_hidden, n_hidden)
+        initial_prob = np.ones((n_hidden))
+        initial_prob /= n_hidden
+        transition_prob = np.ones((n_hidden, n_hidden))
+        transition_prob /= n_hidden
+        
+        n_dim = len(Qs[0][0])
+        means = np.random.randn(n_hidden, n_dim)  
+        covs = np.random.randn(n_hidden, n_dim, n_dim)
+        for i in range(n_hidden):
+            covs[i] = np.eye(n_dim, n_dim)
+
+        hmm = GaussianHMM(initial_prob, transition_prob, means, covs)
+        hmm.viterbi_init(Qs, iter_max=5)
+        print('success viterbi_init')
+        hmm.fit(Qs[:-3], iter_max = 10)
+        print('success fit')
+        hmms[category] = hmm
+    '''  
+    for category in datas:
+        Qs = datas[category]
+        n_hidden = 3
+        #initial_prob = np.random.randn(n_hidden)
+        #transition_prob = np.random.randn(n_hidden, n_hidden)
+        initial_prob = np.ones((n_hidden))
+        initial_prob /= n_hidden
+        transition_prob = np.ones((n_hidden, n_hidden))
+        transition_prob /= n_hidden
+        
+        n_dim = len(Qs[0][0])
+        means = np.random.randn(n_hidden, n_dim)  
+        covs = np.random.randn(n_hidden, n_dim, n_dim)
+        for i in range(n_hidden):
+            covs[i] = np.eye(n_dim, n_dim)
+
+        hmm = GaussianHMM(initial_prob, transition_prob, means, covs)
+        hmm.viterbi_init(Qs, iter_max=5)
+        hmms[category] = hmm
+
+    evaluate_num = 5
+    for evaluate_cnt in range(evaluate_num):
+        print(evaluate_cnt, 'start fit')
+        for category in hmms:
+            hmm = hmms[category]
+            Qs = datas[category]
+            hmm.fit(Qs[:-3], iter_max = 20)
+            hmms[category] = hmm
+        
+        # test
+        correct_num = 0
+        for category in datas:
+            for test_sample in datas[category][-3:]:
+                print('real_category:', category)
+                max_like = -1 * np.inf
+                predict = -1
+                for predict_category in hmms:
+                    hmm = hmms[predict_category]
+                    like = hmm.generate_prob(test_sample)
+                    print('category', predict_category, '. like:', like)
+                    if like > max_like:
+                        max_like = like
+                        predict = predict_category
+                        #print('predict_category', predict_category)
+                if predict == category:
+                    correct_num += 1
+                print('predict_category:',predict)
+        print(correct_num / (3*5))
