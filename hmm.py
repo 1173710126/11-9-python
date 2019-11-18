@@ -23,10 +23,10 @@ class HMM(object):
 
         for _ in range(iter_max):             # 约定_未不打算使用的变量: 防止出现未使用变量的警告 
             epsilon, gamma = self.expect(Qs)  # E部:计算似然函数Q的系数: 根据旧参数计算后验概率
-            print('success expect')
+            #print('success expect')
             self.maximize(Qs, epsilon, gamma) # M部:计算似然函数Q的极值点, 得到新的参数, 并更新到类里面
-            print('success maximize')
-            print('------')
+            #print('success maximize')
+            #print('------')
             params_new = np.hstack((self.initial_prob.ravel(), self.transition_prob.ravel()))
             if np.allclose(params, params_new): # 逐元素 判断参数是否收敛, array中所有参数值收敛时返回True
                 break
@@ -60,7 +60,7 @@ class HMM(object):
     def expect(self, Qs):
         #alphas = self.forward(Qs)
         #beltas = self.backward(Qs)
-        alphas, beltas, scales = self.forward_and_backward(Qs)
+        alphas, beltas, _ = self.forward_and_backward(Qs)
         epsilons = list()
         gammas = list()
         for k, Q in enumerate(Qs): # 对Qs中每个Q计算一次epsilon, gamma, 加入列表epsilons, gammas
@@ -78,20 +78,20 @@ class HMM(object):
                         # TODO:
                         epsilon[t][i][j] = alpha[t][i] * self.transition_prob[i][j] * likelihood[t+1,j] * belta[t+1,j] 
                         scale += epsilon[t][i][j]
-                if scale != 0:
-                    epsilon[t] /= scale # ------------------归一化-----------------
+                #if scale != 0:
+                epsilon[t] /= scale # ------------------归一化-----------------
 
-            Q_prob = alpha[T-1].sum()
-            if Q_prob != 0:
-                epsilon /= Q_prob
+            #Q_prob = alpha[T-1].sum()
+            #if Q_prob != 0:
+            #    epsilon /= Q_prob
             epsilons.append(epsilon)
 
             gamma = np.zeros((T, self.n_hidden), dtype = 'float64')
             for t in range(T):
                 for i in range(self.n_hidden):
                     gamma[t][i] = alpha[t,i]*belta[t,i]
-                if gamma[t].sum() != 0:
-                    gamma[t] /= gamma[t].sum() # -----------归一化-----------------
+                #if gamma[t].sum() != 0:
+                gamma[t] /= gamma[t].sum() # -----------归一化-----------------
             gammas.append(gamma)
 
         return epsilons, gammas
@@ -109,6 +109,7 @@ class HMM(object):
             #print('means:', self.means)
             #print('covs:', self.covs)
 
+            '''
             alpha = list()
             alpha_1 = self.initial_prob * likelihood[0] # 初始时刻的alpha, alpha[0] = array[ , , , ]
             scale.append(alpha_1.sum())
@@ -127,6 +128,24 @@ class HMM(object):
                 alpha_t /= scale[t] # ----------------归一化-----------------
                 alpha.append(alpha_t)
             alpha = np.asarray(alpha)
+            '''
+            # alpha(t+1,i) = ( sum_j alpha(t, j) a[j,i] ) b[t+1,i]
+            scale = list()
+            alpha = np.zeros((T, self.n_hidden))
+            for i in range(self.n_hidden):
+                alpha[0][i] = self.initial_prob[i] * likelihood[0][i]
+            scale.append(alpha[0].sum())
+            alpha[0] /= scale[0]
+            for t in range(1, T):
+                for i in range(self.n_hidden):
+                    tmp = 0
+                    for j in range(self.n_hidden):
+                        tmp += alpha[t-1][j] * self.transition_prob[j][i]
+                    alpha[t][i] = tmp * likelihood[t][i]
+                np.nan_to_num(alpha[t])
+                scale.append(alpha[t].sum())
+                np.nan_to_num(scale[t])
+                alpha[t] /= scale[t]
             alphas.append(alpha)
 
             scales.append(scale)
@@ -156,11 +175,11 @@ class HMM(object):
                           = P(z1=i)P(o1|z1=i)
               alpha(1,) = init_prob * b_1
       more  : alpha(t+1,i) = P(o1,...,ot+1,zt+1=i) 
-                          = sum_j P(o1,...,ot+1,zt=j, zt+1=i) 
-                          = sum_j P(o1,...,ot,zt=j) P(ot+1,zt+1=i|zt=j,o1,...,ot)
-                          = sum_j alpha(t, j) P(ot+1,zt+1=i|zt=j)
-                          = sum_j alpha(t, j) P(zt+1=i|zt=j)P(ot+1|zt+1=i,zt=j)
-                          = ( sum_j alpha(t, j) a[j,i] ) b[t+1,i]
+                           = sum_j P(o1,...,ot+1,zt=j, zt+1=i) 
+                           = sum_j P(o1,...,ot,zt=j) P(ot+1,zt+1=i|zt=j,o1,...,ot)
+                           = sum_j alpha(t, j) P(ot+1,zt+1=i|zt=j)
+                           = sum_j alpha(t, j) P(zt+1=i|zt=j)P(ot+1|zt+1=i,zt=j)
+              alpha(t+1,i) = ( sum_j alpha(t, j) a[j,i] ) b[t+1,i]
               alpha(t+1,i) = alpha(t,) X a[,i] * b[t+1,i]
               alpha(t+1,)  = alpha(t,) X a[,]  * b[t+1,]
     """
@@ -273,9 +292,8 @@ class HMM(object):
 
     def generate_prob(self, Q):
         alphas, beltas, scales = self.forward_and_backward([Q])
-        alpha = alphas[0]
         scale = scales[0]
-        alpha *= scale[-1]
-        return alpha[len(Q)-1].sum()
+        #print(scale)
+        return np.log(scale).sum()
     
 

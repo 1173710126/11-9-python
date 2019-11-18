@@ -23,7 +23,6 @@ def get_mfc_data(path):
                 data.append(struct.unpack('>f', data_byte)[0])   
         data = np.array(data)
         data.shape = nframes, int(ndim)
-        
         category = file_name[0]
         if category in datas:
             datas[category].append(data)
@@ -40,6 +39,8 @@ if __name__ == "__main__":
         print(len(datas[key][0]))
     '''
     hmms = dict()
+        
+    '''
     for category in datas:
         Qs = datas[category]
         n_hidden = 6
@@ -57,29 +58,58 @@ if __name__ == "__main__":
             covs[i] = np.eye(n_dim, n_dim)
 
         hmm = GaussianHMM(initial_prob, transition_prob, means, covs)
-        hmm.viterbi_init(Qs, iter_max=3)
+        hmm.viterbi_init(Qs, iter_max=5)
         print('success viterbi_init')
-        hmm.fit(Qs[:-3], iter_max = 5)
+        hmm.fit(Qs[:-3], iter_max = 10)
         print('success fit')
         hmms[category] = hmm
-        
-    
-    # test
-    correct_num = 0
+    '''  
     for category in datas:
-        for test_sample in datas[category][-3:]:
-            max_like = -1
-            predict = -1
-            for predict_category in hmms:
-                hmm = hmms[predict_category]
-                like = hmm.generate_prob(test_sample)
-                print('like:', like)
-                if like > max_like:
-                    max_like = like
-                    predict = predict_category
-                    #print('predict_category', predict_category)
-            if predict == category:
-                correct_num += 1
-            print('predict:',predict)
-    print(correct_num / (3*5))
+        Qs = datas[category]
+        n_hidden = 3
+        #initial_prob = np.random.randn(n_hidden)
+        #transition_prob = np.random.randn(n_hidden, n_hidden)
+        initial_prob = np.ones((n_hidden))
+        initial_prob /= n_hidden
+        transition_prob = np.ones((n_hidden, n_hidden))
+        transition_prob /= n_hidden
+        
+        n_dim = len(Qs[0][0])
+        means = np.random.randn(n_hidden, n_dim)  
+        covs = np.random.randn(n_hidden, n_dim, n_dim)
+        for i in range(n_hidden):
+            covs[i] = np.eye(n_dim, n_dim)
+
+        hmm = GaussianHMM(initial_prob, transition_prob, means, covs)
+        hmm.viterbi_init(Qs, iter_max=5)
+        hmms[category] = hmm
+
+    evaluate_num = 5
+    for evaluate_cnt in range(evaluate_num):
+        print(evaluate_cnt, 'start fit')
+        for category in hmms:
+            hmm = hmms[category]
+            Qs = datas[category]
+            hmm.fit(Qs[:-3], iter_max = 20)
+            hmms[category] = hmm
+        
+        # test
+        correct_num = 0
+        for category in datas:
+            for test_sample in datas[category][-3:]:
+                print('real_category:', category)
+                max_like = -1 * np.inf
+                predict = -1
+                for predict_category in hmms:
+                    hmm = hmms[predict_category]
+                    like = hmm.generate_prob(test_sample)
+                    print('category', predict_category, '. like:', like)
+                    if like > max_like:
+                        max_like = like
+                        predict = predict_category
+                        #print('predict_category', predict_category)
+                if predict == category:
+                    correct_num += 1
+                print('predict_category:',predict)
+        print(correct_num / (3*5))
     

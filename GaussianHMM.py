@@ -34,7 +34,7 @@ class GaussianHMM(HMM):
                 if np.isnan(pb):
                     likelihood[t][i] = 1e50
                 else:
-                    likelihood[t][i] = max(pb, 1e50)
+                    likelihood[t][i] = min(pb, 1e50)
 
         return likelihood
     
@@ -60,8 +60,20 @@ class GaussianHMM(HMM):
         self.initial_prob /= num
         
         #TODO:
-        self.transition_prob = sum([epsilon.sum(axis = 0) for epsilon in epsilons]) # 先对每个epsilon分别求和, 在把这些加起来 
-        self.transition_prob /= sum([gamma.sum(axis = 0) for gamma in gammas]) # 矩阵求和时axis = 0, 表示将每行加和得到一行
+        '''
+        transition_prob = sum([epsilon.sum(axis = 0) for epsilon in epsilons]) # 先对每个epsilon分别求和, 在把这些加起来
+        transition_prob = np.nan_to_num(transition_prob)
+        self.transition_prob = transition_prob / np.nan_to_num(sum([gamma.sum(axis = 0) for gamma in gammas])) # 矩阵求和时axis = 0, 表示将每行加和得到一行
+        '''
+        transition_prob = np.zeros((self.n_hidden, self.n_hidden))
+        for i in range(self.n_hidden):
+            for j in range(self.n_hidden):
+                for epsilon in epsilons:
+                    transition_prob[i][j] += epsilon[:,i,j].sum()
+        transition_prob = np.nan_to_num(transition_prob)
+        transition_prob += 1e-300
+        transition_prob /= np.nan_to_num(transition_prob.sum(axis = 0))
+        self.transition_prob = transition_prob
 
         for i in range(self.n_hidden):
             ui = sum([np.matmul(gamma[:,i], Q) for Q, gamma in zip(Qs, gammas)]) / num
