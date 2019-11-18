@@ -43,18 +43,24 @@ if __name__ == "__main__":
     for category in datas:
         Qs = datas[category]
         n_hidden = 6
-        initial_prob = np.random.randn(n_hidden)
-        transition_prob = np.random.randn(n_hidden, n_hidden)
-        n_dim = len(Qs[0][0])
-        means = np.random.randn(n_hidden, n_dim)
+        #initial_prob = np.random.randn(n_hidden)
+        #transition_prob = np.random.randn(n_hidden, n_hidden)
+        initial_prob = np.ones((n_hidden))
+        initial_prob /= n_hidden
+        transition_prob = np.ones((n_hidden, n_hidden))
+        transition_prob /= n_hidden
         
+        n_dim = len(Qs[0][0])
+        means = np.random.randn(n_hidden, n_dim)  
         covs = np.random.randn(n_hidden, n_dim, n_dim)
         for i in range(n_hidden):
             covs[i] = np.eye(n_dim, n_dim)
 
         hmm = GaussianHMM(initial_prob, transition_prob, means, covs)
-        hmm.viterbi_init(Qs[0], iter_max=5)
-        hmm.fit(Qs[:-3], iter_max = 1)
+        hmm.viterbi_init(Qs, iter_max=3)
+        print('success viterbi_init')
+        hmm.fit(Qs[:-3], iter_max = 5)
+        print('success fit')
         hmms[category] = hmm
         
     
@@ -67,11 +73,13 @@ if __name__ == "__main__":
             for predict_category in hmms:
                 hmm = hmms[predict_category]
                 like = hmm.generate_prob(test_sample)
-                if like < max_like:
+                print('like:', like)
+                if like > max_like:
                     max_like = like
-                    predict =predict_category
+                    predict = predict_category
+                    #print('predict_category', predict_category)
             if predict == category:
                 correct_num += 1
-            print(predict)
+            print('predict:',predict)
     print(correct_num / (3*5))
     

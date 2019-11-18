@@ -7,6 +7,7 @@ class MultivariateGaussian(object):
         self.mean = mean
         self.cov = cov
         #print(cov)
+        self.cov += np.random.randn(cov.shape[0], cov.shape[1])
         self.precision = np.linalg.inv(self.cov)
     
     # 计算x在该多维高斯分下出现的概率, 注意：概率密度可以大于1，是分布函数一定<=1
@@ -14,7 +15,8 @@ class MultivariateGaussian(object):
         diff = x - self.mean
         exponent = -1/2 * np.matmul(np.matmul(diff.T, self.precision), diff)
         
-        det = np.linalg.det(self.cov)
-        factor = 1 / np.sqrt(det * ((2 * np.pi) ** self.n_dim)) # np.pi与math.pi相同, 都是float类型
+        det = np.linalg.det(self.cov + np.random.randn(self.cov.shape[0], self.cov.shape[1]))
+        #print(det)
+        factor = 1 / np.sqrt(abs(det) * ((2 * np.pi) ** self.n_dim)) # np.pi与math.pi相同, 都是float类型
 
-        return  factor * np.exp(exponent)
+        return  factor * np.exp(exponent) + 1e-300
