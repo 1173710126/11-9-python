@@ -7,20 +7,13 @@ import os
 
 if __name__ == "__main__":
     datas = get_mfc_data('C:/Users/18341/Desktop/book/听觉/实验3-语音识别/语料/features/')
-
-    #model = hmm.GaussianHMM(n_components = 5, n_iter = 20, tol = 0.01, covariance_type="diag")
-
-    hmms = dict()
     
+    hmms = dict()
     for category in datas:
         Qs = datas[category]
         n_hidden = 6
         model = hmm.GaussianHMM(n_components = 5, n_iter = 20, tol = 0.01, covariance_type="diag")
         vstack_Qs = np.vstack(tuple(Qs[:-3]))
-        #print(tuple(Qs[:-3]))
-        #print('----------')
-        #print([Q.shape[0] for Q in Qs[:-3]])
-        #print('-++++++++++++')
         model.fit(vstack_Qs, [Q.shape[0] for Q in Qs[:-3]])
         print('success fit')
         hmms[category] = model

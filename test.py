@@ -48,11 +48,14 @@ if __name__ == "__main__":
         transition_prob /= n_hidden
         
         n_dim = len(Qs[0][0])
-        means = np.random.randn(n_hidden, n_dim)  
-        covs = np.random.randn(n_hidden, n_dim, n_dim)
-        for i in range(n_hidden):
-            covs[i] = np.eye(n_dim, n_dim)
-
+        means = np.random.randn(n_hidden, n_dim) * 10
+        covs = list()
+        for _ in range(n_hidden):
+            cov = np.eye(n_dim) 
+            for i in range(n_dim):
+                cov[i,i] *= (np.random.randn() * 10)
+            covs.append(cov)
+        covs = np.asarray(covs)
         hmm = GaussianHMM(initial_prob, transition_prob, means, covs)
         hmm.viterbi_init(Qs, iter_max=5)
         hmms[category] = hmm
@@ -62,10 +65,11 @@ if __name__ == "__main__":
         print(evaluate_cnt, 'start fit')
         for category in hmms:
             hmm = hmms[category]
+            #print(hmm.covs)
             Qs = datas[category]
             hmm.fit(Qs[:-3], iter_max = 20)
             hmms[category] = hmm
-        
+        print('fit success')
         # test
         correct_num = 0
         for category in datas:
