@@ -3,23 +3,25 @@ from hmmlearn import hmm
 from get_mfc_data import get_mfc_data
 
 if __name__ == "__main__":
+
     #datas = get_mfc_data('C:/Users/18341/Desktop/book/听觉/实验3-语音识别/语料/features/')
+    
     datas = get_mfc_data('F:/HIT/大三上/视听觉/lab3/组/gzx_sound_mfcc/')
     
 
     #model = hmm.GaussianHMM(n_components = 5, n_iter = 20, tol = 0.01, covariance_type="diag")
 
-    hmms = dict()
+    #hmms = dict()
+
+    #datas = get_mfc_data('C:/Users/18341/Desktop/book/听觉/实验3-语音识别/语料/features/')
+
     
+    hmms = dict()
     for category in datas:
         Qs = datas[category]
         n_hidden = 6
         model = hmm.GaussianHMM(n_components = 5, n_iter = 20, tol = 0.01, covariance_type="diag")
         vstack_Qs = np.vstack(tuple(Qs[:-3]))
-        #print(tuple(Qs[:-3]))
-        #print('----------')
-        #print([Q.shape[0] for Q in Qs[:-3]])
-        #print('-++++++++++++')
         model.fit(vstack_Qs, [Q.shape[0] for Q in Qs[:-3]])
         print('success fit')
         hmms[category] = model

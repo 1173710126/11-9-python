@@ -8,10 +8,10 @@ class HMM(object):
         self.initial_prob = initial_prob
         self.transition_prob = transition_prob
     # 似然和M部都与发射概率B有关, 而B可以连续可以离散, 故这里暂不定义
-    def likelihood(self, Q):
+    def log_likelihood(self, Q):
         raise NotImplementedError
 
-    def maximize(self, Qs, epsilon, gamma):
+    def maximize(self, Qs, epsilons, gammas):
         raise NotImplementedError
 
     # 传入多组序列进行训练
@@ -22,11 +22,9 @@ class HMM(object):
         # 其实这里应该也计算发射概率b的变化? d高斯时计算均值和协方差的变化
 
         for _ in range(iter_max):             # 约定_未不打算使用的变量: 防止出现未使用变量的警告 
-            epsilon, gamma = self.expect(Qs)  # E部:计算似然函数Q的系数: 根据旧参数计算后验概率
-            #print('success expect')
-            self.maximize(Qs, epsilon, gamma) # M部:计算似然函数Q的极值点, 得到新的参数, 并更新到类里面
-            #print('success maximize')
-            #print('------')
+            epsilons, gammas = self.expect(Qs)  # E部:计算似然函数Q的系数: 根据旧参数计算后验概率
+            self.maximize(Qs, epsilons, gammas) # M部:计算似然函数Q的极值点, 得到新的参数, 并更新到类里面
+
             params_new = np.hstack((self.initial_prob.ravel(), self.transition_prob.ravel()))
             if np.allclose(params, params_new): # 逐元素 判断参数是否收敛, array中所有参数值收敛时返回True
                 break
@@ -68,18 +66,17 @@ class HMM(object):
             alpha = alphas[k]
             belta = beltas[k]
             
-            likelihood = self.likelihood(Q)
-
+            log_likelihood = self.log_likelihood(Q)
+            likelihood = np.exp(log_likelihood) # TODO: 用log求发射概率,取指数后仍有可能得到0或者inf,故给发射概率取log, 而计算epsilon是还用乘积的话, 没有意义
             epsilon = np.zeros((T, self.n_hidden, self.n_hidden), dtype = 'float64')      
             for t in range(T-1):
-                scale = 0
+                #scale = 0
                 for i in range(self.n_hidden):
-                    for j in range(self.n_hidden):
-                        # TODO:
+                    for j in range(self.n_hidden):        
                         epsilon[t][i][j] = alpha[t][i] * self.transition_prob[i][j] * likelihood[t+1,j] * belta[t+1,j] 
-                        scale += epsilon[t][i][j]
-                #if scale != 0:
-                epsilon[t] /= scale # ------------------归一化-----------------
+                        scale += epsilon[t][i][j]# TODO: 删去归一化这一步？epsilon[t]的概率密度之和不一定为1
+                                        #if scale != 0:
+                #epsilon[t] /= scale # ------------------归一化-----------------
 
             #Q_prob = alpha[T-1].sum()
             #if Q_prob != 0:
@@ -89,9 +86,9 @@ class HMM(object):
             gamma = np.zeros((T, self.n_hidden), dtype = 'float64')
             for t in range(T):
                 for i in range(self.n_hidden):
-                    gamma[t][i] = alpha[t,i]*belta[t,i]
-                #if gamma[t].sum() != 0:
-                gamma[t] /= gamma[t].sum() # -----------归一化-----------------
+                    gamma[t][i] = alpha[t,i] + belta[t,i]
+                    # -----------前后向变量做防下溢处理后, gamma不用归一化,----------------- TODO:
+            #gamma = np.exp(gamma) 取log时会出现log(0)警告
             gammas.append(gamma)
 
         return epsilons, gammas
@@ -104,7 +101,8 @@ class HMM(object):
         scales = list()
         for Q in Qs:
             T = Q.shape[0]   # 注意: shape, 不需要加括号
-            likelihood = self.likelihood(Q)  # 求出各时刻各状态发射观察值的概率
+            log_likelihood = self.log_likelihood(Q)  # 求出各时刻各状态发射观察值的概率
+            likelihood = np.exp(log_likelihood)
             scale = list()
             #print('means:', self.means)
             #print('covs:', self.covs)
@@ -134,7 +132,9 @@ class HMM(object):
             alpha = np.zeros((T, self.n_hidden))
             for i in range(self.n_hidden):
                 alpha[0][i] = self.initial_prob[i] * likelihood[0][i]
-            scale.append(alpha[0].sum())
+            #alpha[0] += 1e-33
+            scale.append(alpha[0].sum())  # TODO: nan_to_num
+            #alpha[0] = np.nan_to_num(alpha[0])
             alpha[0] /= scale[0]
             for t in range(1, T):
                 for i in range(self.n_hidden):
@@ -142,9 +142,10 @@ class HMM(object):
                     for j in range(self.n_hidden):
                         tmp += alpha[t-1][j] * self.transition_prob[j][i]
                     alpha[t][i] = tmp * likelihood[t][i]
-                np.nan_to_num(alpha[t])
+                #alpha[t] += 1e-33 # TODO:
+                #alpha[t] = np.nan_to_num(alpha[t])
                 scale.append(alpha[t].sum())
-                np.nan_to_num(scale[t])
+                scale[t] = np.nan_to_num(scale[t])
                 alpha[t] /= scale[t]
             alphas.append(alpha)
 
@@ -152,11 +153,18 @@ class HMM(object):
             
             belta = list()
             belta_T = np.ones(self.n_hidden) # 初始时刻的belta
-            #belta_T /= scale[T-1]
+            belta_T /= scale[T-1]
             belta.insert(0, belta_T)
             for t in range(T-2, -1, -1): # 这里及上文 t从T开始直到1, 故t时刻的似然存储在likelihood[t-1]内
-                belta_t = np.matmul(self.transition_prob, likelihood[t+1] * belta[0])
-                belta_t += 1e-30
+                #belta_t = np.matmul(self.transition_prob, likelihood[t+1] * belta[0])
+                #belta(t, i) = sum_j a(i,j) (b(t+1,j) belta(t+1,j))
+                belta_t = np.zeros((self.n_hidden))
+                for i in range(self.n_hidden):
+                    tmp = 0
+                    for j in range(self.n_hidden):
+                        tmp += self.transition_prob[i][j] * likelihood[t+1,j] * belta[0][j]
+                    belta_t[i] = tmp
+                belta_t += 1e-30 
                 belta_t /= scale[t] # ----------------归一化------------------
                 belta.insert(0, belta_t) # python list method: list.insert(index, obj) 在指定位置插入元素
             belta = np.asarray(belta)
@@ -164,32 +172,32 @@ class HMM(object):
 
         return alphas, beltas, scales
 
-    """
-    前向算法
-    input : Qs 同一HMM模型的多个观测序列
-    output: alpha[k, t, i] 第k个序列alpha(t,i)的值
-            alpha[k].shape == (Tk, n_hidden)
-    DP algorithm:
-      define: alpha(t,i) = P(o1,...,ot,zt=i)
-      init  : alpha(1,i) = P(o1,z1=i) 
-                          = P(z1=i)P(o1|z1=i)
-              alpha(1,) = init_prob * b_1
-      more  : alpha(t+1,i) = P(o1,...,ot+1,zt+1=i) 
-                           = sum_j P(o1,...,ot+1,zt=j, zt+1=i) 
-                           = sum_j P(o1,...,ot,zt=j) P(ot+1,zt+1=i|zt=j,o1,...,ot)
-                           = sum_j alpha(t, j) P(ot+1,zt+1=i|zt=j)
-                           = sum_j alpha(t, j) P(zt+1=i|zt=j)P(ot+1|zt+1=i,zt=j)
-              alpha(t+1,i) = ( sum_j alpha(t, j) a[j,i] ) b[t+1,i]
-              alpha(t+1,i) = alpha(t,) X a[,i] * b[t+1,i]
-              alpha(t+1,)  = alpha(t,) X a[,]  * b[t+1,]
-    """
+
     def forward(self, Qs):
-        
+        """
+        前向算法
+        input : Qs 同一HMM模型的多个观测序列
+        output: alpha[k, t, i] 第k个序列alpha(t,i)的值
+                alpha[k].shape == (Tk, n_hidden)
+        DP algorithm:
+        define: alpha(t,i) = P(o1,...,ot,zt=i)
+        init  : alpha(1,i) = P(o1,z1=i) 
+                            = P(z1=i)P(o1|z1=i)
+                alpha(1,) = init_prob * b_1
+        more  : alpha(t+1,i) = P(o1,...,ot+1,zt+1=i) 
+                            = sum_j P(o1,...,ot+1,zt=j, zt+1=i) 
+                            = sum_j P(o1,...,ot,zt=j) P(ot+1,zt+1=i|zt=j,o1,...,ot)
+                            = sum_j alpha(t, j) P(ot+1,zt+1=i|zt=j)
+                            = sum_j alpha(t, j) P(zt+1=i|zt=j)P(ot+1|zt+1=i,zt=j)
+                alpha(t+1,i) = ( sum_j alpha(t, j) a[j,i] ) b[t+1,i]
+                alpha(t+1,i) = alpha(t,) X a[,i] * b[t+1,i]
+                alpha(t+1,)  = alpha(t,) X a[,]  * b[t+1,]
+        """        
         alphas = list()
         for Q in Qs:
             T = Q.shape[0]   # 注意: shape, 不需要加括号
-            likelihood = self.likelihood(Q)  # 求出各时刻各状态发射观察值的概率
-            
+            log_likelihood = self.log_likelihood(Q)  # 求出各时刻各状态发射观察值的概率
+            likelihood = np.exp(log_likelihood)
             alpha = list()
             alpha_1 = self.initial_prob * likelihood[0] # 初始时刻的alpha
             alpha.append(alpha_1)
@@ -211,28 +219,28 @@ class HMM(object):
             '''
         return alphas
 
-    '''
-    后向算法
-    input : Qs 同一HMM模型的多个观测序列
-    output: belta[k, t, i] belta(t,i)的值, t时刻状态i生成该时刻观测值的概率
-            belta[k].shape == (Tk, n_hidden)
-    DP algorithm:
-      define: belta(t, i) = P(ot+1,...,oT|zt=i)
-      init  : belta(T, i) = 1  :make sure P(o1,...,oT,zT=i) = alpha(T,i)*belta(T,i)
-      more  : belta(t, i) = P(ot+1,...,oT|zt=i)
-                          = sum_j P(zt+1=j,ot+1,ot+2,...,oT|zt=i)
-                          = sum_j P(zt+1=j,ot+1|zt=i) P(ot+2,...,oT|zt+1=j,ot+1,zt=i)
-                          = sum_j P(zt+1=j|zt=i) P(ot+1|zt+1=j,zt=i) P(ot+2,...,oT|zt+1=j)
-                          = sum_j a(i,j) (b(t+1,j) belta(t+1,j))
-                          = a(i,) X ( b(t+1,) * belta(t+1,) ) = a number
-              belta(t, )  = [a(,)  X ( b(t+1,) * belta(t+1,) )] = an array, so don't need traverse
-    '''
     def backward(self, Qs):
+        '''
+        后向算法
+        input : Qs 同一HMM模型的多个观测序列
+        output: belta[k, t, i] belta(t,i)的值, t时刻状态i生成该时刻观测值的概率
+                belta[k].shape == (Tk, n_hidden)
+        DP algorithm:
+        define: belta(t, i) = P(ot+1,...,oT|zt=i)
+        init  : belta(T, i) = 1  :make sure P(o1,...,oT,zT=i) = alpha(T,i)*belta(T,i)
+        more  : belta(t, i) = P(ot+1,...,oT|zt=i)
+                            = sum_j P(zt+1=j,ot+1,ot+2,...,oT|zt=i)
+                            = sum_j P(zt+1=j,ot+1|zt=i) P(ot+2,...,oT|zt+1=j,ot+1,zt=i)
+                            = sum_j P(zt+1=j|zt=i) P(ot+1|zt+1=j,zt=i) P(ot+2,...,oT|zt+1=j)
+                belta(t, i) = sum_j a(i,j) (b(t+1,j) belta(t+1,j))
+                belta(t, i) = a(i,) X ( b(t+1,) * belta(t+1,) ) = a number
+                belta(t, )  = [a(,)  X ( b(t+1,) * belta(t+1,) )] = an array, so don't need traverse
+        '''
         beltas = list()
         for Q in Qs:
             T = Q.shape[0]
-            likelihood = self.likelihood(Q)  # 求出各时刻各状态发射观察值的概率
-            
+            log_likelihood = self.log_likelihood(Q)  # 求出各时刻各状态发射观察值的概率
+            likelihood = np.exp(log_likelihood)
             belta = list()
             belta_T = np.ones(self.n_hidden) # 初始时刻的belta
             belta.insert(0, belta_T)
@@ -252,14 +260,14 @@ class HMM(object):
             beltas.append(belta)
 
         return beltas
-    
+
     # input: Q
     # output: 最佳状态链. 给定观测值Q时,该hmm模型中出现概率最大的状态链
     def viterbi(self, Q):
         T = Q.shape[0]
         delta = np.full((T, self.n_hidden), -1*np.inf, dtype = 'float64') # Q.shape = (T, n_dim)
         pre =np.zeros((T, self.n_hidden), dtype = 'int64')
-        likelihood = self.likelihood(Q)
+        log_likelihood = self.log_likelihood(Q)
         for i in range(self.initial_prob.shape[0]):
             self.initial_prob[i] += 1e-50
         for i in range(self.transition_prob.shape[0]):
@@ -267,7 +275,7 @@ class HMM(object):
                 self.transition_prob[i][j] += 1e-50   
         #self.initial_prob += 1e-300
         for i in range(self.n_hidden):
-            delta[0][i] = np.log(self.initial_prob[i]) + np.log(likelihood[0][i])
+            delta[0][i] = np.log(self.initial_prob[i]) + log_likelihood[0][i]
             pre[0][i] = 0
         #self.transition_prob += 1e-300
         for t in range(1, T):
@@ -276,7 +284,7 @@ class HMM(object):
                     if delta[t][j] < delta[t-1][i] + np.log(self.transition_prob[i][j]):
                         delta[t][j] = delta[t-1][i] + np.log(self.transition_prob[i][j])
                         pre[t][j] = i
-                delta[t][j] += np.log(likelihood[t][j])
+                delta[t][j] += log_likelihood[t][j]
         maxDelta = -1 * np.inf
         q = -1
         for i in range(self.n_hidden):

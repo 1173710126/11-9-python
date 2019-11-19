@@ -18,7 +18,7 @@ class GaussianHMM(HMM):
     #           X.shape = (T, n_dim).
     # return B, B[t, i] = P(ot|zt = i)
     #           B.shape = (T, n_hidden).
-    def likelihood(self, X):
+    def log_likelihood(self, X):
         
         # diff = X[:,None,:] - self.means  给定时刻t， 计算ot与每个状态发射均值的差值，所以要先扩展X，使之在时刻t有n_hidden个相同的值，再分别减去各状态的发射均值
         T = X.shape[0]
@@ -27,16 +27,18 @@ class GaussianHMM(HMM):
             for i in range(self.n_hidden):
                 diff[t][i] = X[t] - self.means[i]
         
-        likelihood = np.zeros((T, self.n_hidden), dtype = 'float64')
+        log_likelihood = np.zeros((T, self.n_hidden), dtype = 'float64')
         for t in range(T):
             for i in range(self.n_hidden):
-                pb = MultivariateGaussian(self.means[i], self.covs[i]).prob(X[t])  # t时刻, 第i个状态的高斯分布生成该时刻观测值X[t]的概率
-                if np.isnan(pb):
-                    likelihood[t][i] = 1e50
-                else:
-                    likelihood[t][i] = min(pb, 1e50)
 
-        return likelihood
+                log_pb = MultivariateGaussian(self.means[i], self.covs[i]).log_prob(X[t])  # t时刻, 第i个状态的高斯分布生成该时刻观测值X[t]的概率
+                log_likelihood[t][i] = log_pb
+                #if np.isnan(pb):
+                #    likelihood[t][i] = 1e50 # TODO:
+                #else:
+                #    likelihood[t][i] = min(pb, 1e50)
+
+        return log_likelihood
     
     '''
     params:
@@ -56,10 +58,9 @@ class GaussianHMM(HMM):
         num = len(Qs)
         self.initial_prob = np.zeros(self.n_hidden, dtype = 'float64')
         for k in range(num):
-            self.initial_prob += gammas[k][0][:]
+            self.initial_prob += gammas[k][0]
         self.initial_prob /= num
         
-        #TODO:
         '''
         transition_prob = sum([epsilon.sum(axis = 0) for epsilon in epsilons]) # 先对每个epsilon分别求和, 在把这些加起来
         transition_prob = np.nan_to_num(transition_prob)
@@ -70,7 +71,8 @@ class GaussianHMM(HMM):
             for j in range(self.n_hidden):
                 for epsilon in epsilons:
                     transition_prob[i][j] += epsilon[:,i,j].sum()
-        transition_prob = np.nan_to_num(transition_prob)
+                    #factor[i] += 
+        transition_prob = np.nan_to_num(transition_prob) # TODO:
         transition_prob += 1e-300
         transition_prob /= np.nan_to_num(transition_prob.sum(axis = 0)) # 联合概率除以先验概率 = 条件概率
         self.transition_prob = transition_prob
@@ -106,7 +108,7 @@ class GaussianHMM(HMM):
                 for j in range(self.n_dim):
                     if i == j and abs(covs[k][i][j]) < 1e-5:
                         covs[k][i][j] = np.sign(covs[k][i][j]) * 1e-5
-                    else:
+                    elif i != j:
                         covs[k][i][j] = 0     
         self.covs = covs
         
@@ -167,7 +169,29 @@ class GaussianHMM(HMM):
             self.initial_prob = sum_initial_prob / len(Qs)
             self.transition_prob = sum_transition_prob / len(Qs)
             self.means = sum_means / len(Qs)
-            self.covs = sum_covs / len(Qs)
+            
+            sum_covs /= len(Qs)
+            # 将协方差矩阵转成对角阵
+            for k in range(self.n_hidden):
+                for i in range(self.n_dim):
+                    for j in range(self.n_dim):
+                        if i == j and abs(sum_covs[k][i][j]) < 1e-5:
+                            sum_covs[k][i][j] = np.sign(sum_covs[k][i][j]) * 1e-5
+                        elif i != j:
+                            sum_covs[k][i][j] = 0
+            flag = 0
+            for k in range(self.n_hidden):
+                for i in range(self.n_dim):
+                    for j in range(self.n_dim):    
+                        if (i == j and sum_covs[k][i][j] == 0) or (i != j and sum_covs[k][i][j] != 0):
+                            flag = 1
+                            break
+            #if flag:
+            #    print('!!!!!!!!!!!!!')
+            #    print(covs)
+            #    return
+            self.covs = sum_covs
+
             params_new = np.hstack((self.initial_prob.ravel(), self.transition_prob.ravel(), self.means.ravel(), self.covs.ravel()))
             if np.allclose(params, params_new): # 逐元素 判断参数是否收敛, array中所有参数值收敛时返回True
                 break
