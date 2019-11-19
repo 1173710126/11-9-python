@@ -10,8 +10,8 @@ class MultivariateGaussian(object):
         self.cov = cov
         
         for i in range(self.n_dim):
-            if np.abs(self.cov[i][i]) < 1e-4:
-                self.cov[i][i] = 1e-4
+            if np.abs(self.cov[i]) < 1e-3:
+                self.cov[i] = 1e-3
         
         #self.cov += np.random.randn(cov.shape[0], cov.shape[1]) * 40
         #self.precision = np.linalg.inv(self.cov)
@@ -25,10 +25,10 @@ class MultivariateGaussian(object):
         diff = X - self.mean
         log_det = 0
         for i in range(self.n_dim):
-            log_det += np.log(np.abs(self.cov[i][i]))
+            log_det += np.log(np.abs(self.cov[i]))
         exponent = 1
         for i in range(self.n_dim):
-            exponent += (diff[i] ** 2) / self.cov[i][i]
+            exponent += (diff[i] ** 2) / self.cov[i]
         log_pro = -0.5 * (self.n_dim * np.log(2 * np.pi) + log_det + exponent)
         return log_pro
         

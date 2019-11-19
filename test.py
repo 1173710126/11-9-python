@@ -39,7 +39,7 @@ if __name__ == "__main__":
     '''  
     for category in datas:
         Qs = datas[category]
-        n_hidden = 3
+        n_hidden = 5
         #initial_prob = np.random.randn(n_hidden)
         #transition_prob = np.random.randn(n_hidden, n_hidden)
         initial_prob = np.ones((n_hidden))
@@ -57,7 +57,8 @@ if __name__ == "__main__":
             covs.append(cov)
         covs = np.asarray(covs)
         hmm = GaussianHMM(initial_prob, transition_prob, means, covs)
-        hmm.viterbi_init(Qs, iter_max=5)
+        #hmm.viterbi_init(Qs, iter_max=5) # TODO:
+        hmm.kmeans_init(Qs)
         hmms[category] = hmm
 
     evaluate_num = 5
@@ -67,9 +68,10 @@ if __name__ == "__main__":
             hmm = hmms[category]
             #print(hmm.covs)
             Qs = datas[category]
-            hmm.fit(Qs[:-3], iter_max = 20)
+            hmm.fit(Qs[:-3], iter_max = 10)
             hmms[category] = hmm
-        print('fit success')
+            print('fit success')
+        
         # test
         correct_num = 0
         for category in datas:

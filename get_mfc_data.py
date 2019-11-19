@@ -1,7 +1,6 @@
 import struct
 import numpy as np
 import os
-from GaussianHMM import GaussianHMM
 # input: 特征文件夹的路径
 # return: datas, 各类别的音频特征组成的列表
 #   其中datas['1'] = a list :属于类别1的特征列表, 列表中每个元素都是一个特征序列(T*n_dim的numpy矩阵)
